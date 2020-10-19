@@ -24,6 +24,8 @@ void printFileHeader(IMAGE_FILE_HEADER fh);
 void printOptionalHeader(IMAGE_OPTIONAL_HEADER32 oh);
 void parseSectionHeaders(char* fileData, int sectionHeadersOffset, int numberOfSections);
 IMAGE_SECTION_HEADER* getSection(char* fileData, int sectionHeadersOffset, int numberOfSections, int sectionRva);
+void parseExportDirectory(char* fileData, IMAGE_SECTION_HEADER* exportSection, int exportSectionRva);
+void parseImportDirectory(char* fileData, IMAGE_SECTION_HEADER* importSection, int importSectionRva);
 
 
 int main() {
@@ -67,15 +69,17 @@ int main() {
     int numberOfSections = nth->FileHeader.NumberOfSections;
     parseSectionHeaders(fileData, sectionHeadersOffset, numberOfSections);
 
-    // Get Import Section
-    int importSectionRva = nth->OptionalHeader.DataDirectory[1].VirtualAddress;
-    IMAGE_SECTION_HEADER* importSection = getSection(fileData, sectionHeadersOffset, numberOfSections, importSectionRva);
-    printf("Import section at %s (%x)\n", importSection->Name, importSection->Misc.PhysicalAddress);
-
     // Get Export Section
-    int exportSectionRva = nth->OptionalHeader.DataDirectory[0].VirtualAddress;
+    int exportSectionRva = nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
     IMAGE_SECTION_HEADER* exportSection = getSection(fileData, sectionHeadersOffset, numberOfSections, exportSectionRva);
     printf("Export section at %s (%x)\n", exportSection->Name, exportSection->Misc.PhysicalAddress);
+    parseExportDirectory(fileData, exportSection, exportSectionRva);
+
+    // Parse Import Directory
+    int importSectionRva = nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+    IMAGE_SECTION_HEADER* importSection = getSection(fileData, sectionHeadersOffset, numberOfSections, importSectionRva);
+    printf("Import section at %s (%x)\n", importSection->Name, importSection->Misc.PhysicalAddress);
+    parseImportDirectory(fileData, importSection, importSectionRva);
 
     return 0;
 }
@@ -125,8 +129,10 @@ int getFileSize(FILE *fp) {
 }
 
 char* readFullFile(FILE* fp, int size) {
+    printf("Reading file data to memory\n");
     char* fileData = (char*)malloc(size);
     int readed = fread(fileData, 1, size, fp);
+    printf("File data readed to %x\n", (int)fileData);
     return fileData;
 }
 
@@ -256,6 +262,7 @@ void parseSectionHeaders(char* fileData, int sectionHeadersOffset, int numberOfS
         sectionHeadersOffset = sectionHeadersOffset + (int)sizeof(IMAGE_SECTION_HEADER);
     }
 }
+
 IMAGE_SECTION_HEADER* getSection(char* fileData, int sectionHeadersOffset, int numberOfSections, int sectionRva) {
     IMAGE_SECTION_HEADER* sh = (IMAGE_SECTION_HEADER*)malloc(sizeof(IMAGE_SECTION_HEADER));
     for (int i = 0; i < numberOfSections; i++) {
@@ -266,4 +273,51 @@ IMAGE_SECTION_HEADER* getSection(char* fileData, int sectionHeadersOffset, int n
         sectionHeadersOffset = sectionHeadersOffset + (int)sizeof(IMAGE_SECTION_HEADER);
     }
     return NULL;
+}
+
+void parseImportDirectory(char* fileData, IMAGE_SECTION_HEADER* importSection, int importSectionRva) {
+    int rawOffset = (int)fileData + importSection->PointerToRawData;
+    IMAGE_IMPORT_DESCRIPTOR* importDescriptor = (IMAGE_IMPORT_DESCRIPTOR*)(rawOffset + (importSectionRva - importSection->VirtualAddress));
+    printf("[DLL-IMPORTS]\n");
+    for (; importDescriptor->Name != 0; importDescriptor++) {
+        printf("\t%s\n", rawOffset + (importDescriptor->Name - importSection->VirtualAddress)); // DLL Name
+        int thunk;
+        if (importDescriptor->OriginalFirstThunk == 0) {
+            thunk = importDescriptor->FirstThunk;
+        }
+        else {
+            thunk = importDescriptor->OriginalFirstThunk;
+        }
+        IMAGE_THUNK_DATA32* thunkData = (IMAGE_THUNK_DATA32*)(rawOffset + (thunk - importSection->VirtualAddress));
+        // DLL Functions used by this PE
+        for (; thunkData->u1.AddressOfData != 0; thunkData++) {
+            if (thunkData->u1.AddressOfData > 0x80000000) {
+                printf("\t\tOrdinal: %x\n", (WORD)thunkData->u1.AddressOfData);
+            }
+            else {
+                printf("\t\t%s\n", (rawOffset + (thunkData->u1.AddressOfData - importSection->VirtualAddress + 2)));
+            }
+        }
+    }
+}
+
+void parseExportDirectory(char* fileData, IMAGE_SECTION_HEADER* exportSection, int exportSectionRva) {
+    int rawOffset = (int)fileData + exportSection->PointerToRawData;
+    IMAGE_EXPORT_DIRECTORY* exportDirectory = (IMAGE_EXPORT_DIRECTORY*)(rawOffset + (exportSectionRva - exportSection->VirtualAddress));
+    printf("[DLL-EXPORTS]\n");
+    printf("\tCharacteristics: %x\n", exportDirectory->Characteristics);
+    printf("\tTimeDateStamp: %x\n", exportDirectory->TimeDateStamp);
+    printf("\tMajorVersion: %x\n", exportDirectory->MajorVersion);
+    printf("\tMinorVersion: %x\n", exportDirectory->MinorVersion);
+    printf("\tName: %x\n", exportDirectory->Name);
+    printf("\tBase: %x\n", exportDirectory->Base);
+    printf("\tNumberOfFunctions: %x\n", exportDirectory->NumberOfFunctions);
+    printf("\tNumberOfNames: %x\n", exportDirectory->NumberOfNames);
+    printf("\tAddressOfFunctions: %x\n", exportDirectory->AddressOfFunctions);
+    printf("\tAddressOfNames: %x\n", exportDirectory->AddressOfNames);
+    printf("\tAddressOfNameOrdinals: %x\n", exportDirectory->AddressOfNameOrdinals);
+
+    int firstOffset = (int)fileData + exportDirectory->AddressOfFunctions;
+    printf("\n%x\n", (unsigned long) fileData[exportDirectory->AddressOfFunctions]);
+
 }
