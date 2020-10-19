@@ -16,13 +16,14 @@ int getFileSize(FILE *fp);
 char* readFullFile(FILE* fp, int size);
 IMAGE_DOS_HEADER* parseDosHeader(char* fileData);
 IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, int ntHeaderOffset);
-void parseSectionHeaders(char* fileData, int sectionHeadersOffset);
 /*
 We don't need this, since we have access to file and optional headers via NT-HEADERS
 IMAGE_FILE_HEADER* parseFileHeader(char* fileData, int fileHeaderOffset);
 */
 void printFileHeader(IMAGE_FILE_HEADER fh);
 void printOptionalHeader(IMAGE_OPTIONAL_HEADER32 oh);
+void parseSectionHeaders(char* fileData, int sectionHeadersOffset, int numberOfSections);
+IMAGE_SECTION_HEADER* getSection(char* fileData, int sectionHeadersOffset, int numberOfSections, int sectionRva);
 
 
 int main() {
@@ -60,7 +61,18 @@ int main() {
     
     // Parse section headers
     int sectionHeadersOffset = (DWORD)ntHeaderOffset + sizeof(DWORD) + (DWORD)(sizeof(IMAGE_FILE_HEADER)) + (DWORD)nth->FileHeader.SizeOfOptionalHeader;
-    parseSectionHeaders(fileData, sectionHeadersOffset);
+    int numberOfSections = nth->FileHeader.NumberOfSections;
+    parseSectionHeaders(fileData, sectionHeadersOffset, numberOfSections);
+
+    // Get Import Section
+    int importSectionRva = nth->OptionalHeader.DataDirectory[1].VirtualAddress;
+    IMAGE_SECTION_HEADER* importSection = getSection(fileData, sectionHeadersOffset, numberOfSections, importSectionRva);
+    printf("Import section at %s (%x)\n", importSection->Name, importSection->Misc.PhysicalAddress);
+
+    // Get Export Section
+    int exportSectionRva = nth->OptionalHeader.DataDirectory[0].VirtualAddress;
+    IMAGE_SECTION_HEADER* exportSection = getSection(fileData, sectionHeadersOffset, numberOfSections, exportSectionRva);
+    printf("Export section at %s (%x)\n", exportSection->Name, exportSection->Misc.PhysicalAddress);
 
     printf("%x", (int) fh);
     return 0;
@@ -222,6 +234,34 @@ void printOptionalHeader(IMAGE_OPTIONAL_HEADER32 oh) {
 
 }
 
-void parseSectionHeaders(char* fileData, int sectionHeadersOffset) {
-
+void parseSectionHeaders(char* fileData, int sectionHeadersOffset, int numberOfSections) {
+    printf("[SECTION-HEADERS]\n");
+    IMAGE_SECTION_HEADER* sh = (IMAGE_SECTION_HEADER*)malloc(sizeof(IMAGE_SECTION_HEADER));
+    
+    for (int i = 0; i < numberOfSections; i++) {
+        sh = (IMAGE_SECTION_HEADER*)&fileData[sectionHeadersOffset];
+        printf("%s\n", sh->Name);
+        printf("\tVirtual Size: %x\n", sh->Misc.VirtualSize);
+        printf("\tVirtual Address: %x\n", sh->VirtualAddress);
+        printf("\tSize Of Raw Data: %x\n", sh->SizeOfRawData);
+        printf("\tPointer To Raw Data: %x\n", sh->PointerToRawData);
+        printf("\tPointer To Relocations: %x\n", sh->PointerToRelocations);
+        printf("\tPointer To Line Numbers: %x\n", sh->PointerToLinenumbers);
+        printf("\tNumber Of Relocations: %x\n", sh->NumberOfRelocations);
+        printf("\tNumber Of Line Numbers: %x\n", sh->NumberOfLinenumbers);
+        printf("\tCharacteristics: %x\n", sh->Characteristics);
+        printf("\n");
+        sectionHeadersOffset = sectionHeadersOffset + (int)sizeof(IMAGE_SECTION_HEADER);
+    }
+}
+IMAGE_SECTION_HEADER* getSection(char* fileData, int sectionHeadersOffset, int numberOfSections, int sectionRva) {
+    IMAGE_SECTION_HEADER* sh = (IMAGE_SECTION_HEADER*)malloc(sizeof(IMAGE_SECTION_HEADER));
+    for (int i = 0; i < numberOfSections; i++) {
+        sh = (IMAGE_SECTION_HEADER*)&fileData[sectionHeadersOffset];
+        if (sectionRva >= sh->VirtualAddress && sectionRva < sh->VirtualAddress + sh->Misc.VirtualSize) {
+            return sh;
+        }
+        sectionHeadersOffset = sectionHeadersOffset + (int)sizeof(IMAGE_SECTION_HEADER);
+    }
+    return NULL;
 }
