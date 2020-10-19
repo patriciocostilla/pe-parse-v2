@@ -17,7 +17,7 @@ char* readFullFile(FILE* fp, int size);
 IMAGE_DOS_HEADER* parseDosHeader(char* fileData);
 IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, int ntHeaderOffset);
 /*
-We don't need this, since we have access to file and optional headers via NT-HEADERS
+* We don't need this, since we have access to file and optional headers via NT-HEADERS
 IMAGE_FILE_HEADER* parseFileHeader(char* fileData, int fileHeaderOffset);
 */
 void printFileHeader(IMAGE_FILE_HEADER fh);
@@ -49,9 +49,12 @@ int main() {
     int ntHeaderOffset = (int)dh->e_lfanew;
     IMAGE_NT_HEADERS32  * nth = parseNtHeaders(fileData, ntHeaderOffset);
     
+    /*
+    * We don't need this, since we have access to file and optional headers via NT-HEADERS
     // Parse NT Headers -> File Header
     //int fileHeaderOffset = (int)(ntHeaderOffset + sizeof(dh->e_lfanew));
     //IMAGE_FILE_HEADER* fh = parseFileHeader(fileData, fileHeaderOffset);
+    */
 
     // Print NT Headers -> File Header
     printFileHeader(nth->FileHeader);
@@ -74,7 +77,6 @@ int main() {
     IMAGE_SECTION_HEADER* exportSection = getSection(fileData, sectionHeadersOffset, numberOfSections, exportSectionRva);
     printf("Export section at %s (%x)\n", exportSection->Name, exportSection->Misc.PhysicalAddress);
 
-    printf("%x", (int) fh);
     return 0;
 }
 
