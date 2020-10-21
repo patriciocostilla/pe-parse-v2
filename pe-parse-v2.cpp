@@ -3,14 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-// Variable definition
-char file_name[255];
-FILE* fp;
-HANDLE fh;
-
 // Function definition
-void getFileName();
-void openFile();
+char* getFileName(int argc, char* argv[]);
+FILE* openFile(char fileName[]);
 void mapFileToMemory();
 int getFileSize(FILE *fp);
 char* readFullFile(FILE* fp, int size);
@@ -28,12 +23,12 @@ void parseExportDirectory(char* fileData, IMAGE_SECTION_HEADER* exportSection, i
 void parseImportDirectory(char* fileData, IMAGE_SECTION_HEADER* importSection, int importSectionRva);
 
 
-int main() {
+int main(int argc, char* argv[]) {
     // Get file name
-    getFileName();
+    char* file_name = getFileName(argc, argv);
 
     // Open the file
-    openFile();
+    FILE* fp = openFile(file_name);
 
     // Map file to memory
     // mapFileToMemory();
@@ -84,38 +79,41 @@ int main() {
     return 0;
 }
 
-void getFileName() {
-    printf("Enter file name: ");
-    fgets(file_name, sizeof(file_name), stdin);
-    int i, length;
-    length = strlen(file_name);
-    for (i = 0; i < length; i++)
-    {
-        if (file_name[i] == '\n')
-            file_name[i] = '\0';
-    }
-    printf("File name is %s\n", file_name);
-}
-
-void openFile() {
-    printf("Openign file: %s\n", file_name);
-    fp = fopen(file_name, "r");
-    if (fp == NULL) {
-        printf("File Open error\nAborting\n");
+char* getFileName(int argc, char* argv[]) {
+    if (argc == 1) {
+        printf("No file name passed\n");
         exit(0);
     }
-    printf("File opened: %s\t%x\n", file_name, (int)fp);
+    else if (argc > 2) {
+        printf("You can only pass one file name\n");
+        exit(0);
+    }
+    else {
+        printf("# %s\n", argv[1]);
+        return argv[1];
+    }
 }
 
-void mapFileToMemory() {
-    printf("Mapping file %s (%d) to memory\n", file_name, (int)fp);
+FILE* openFile(char fileName[]) {
+    printf("\nOpening file: %s\n", fileName);
+    FILE* fp = fopen(fileName, "r");
+    if (fp == NULL) {
+        printf("\nFile Open error. Aborting\n");
+        exit(0);
+    }
+    printf("\nFile opened: %s (%x)\n", fileName, (int)fp);
+    return fp;
+}
+
+/*void mapFileToMemory() {
+    printf("Mapping file %s (%d) to memory\n", fileName, (int)fp);
     fh = CreateFileMappingA(fp, NULL, PAGE_READONLY, 0, 0, "parsed_dll");
     if (fh == NULL) {
         printf("File maping error\nAborting\n");
         exit(0);
     }
-    printf("File mapped: %s\t%d\n", file_name, (int)fh);
-}
+    printf("File mapped: %s\t%d\n", fileName, (int)fh);
+}*/
 
 int getFileSize(FILE *fp) {
     // Seek end of file
