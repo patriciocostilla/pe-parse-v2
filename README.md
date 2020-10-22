@@ -1,6 +1,6 @@
 # pe-parse-v2
 
-This a pe-parser project written in C
+This a 32-bit Portable Executable parser project written in C
 
 ## How to use
 
@@ -10,5 +10,10 @@ This a pe-parser project written in C
 1. ???
 1. Profit
 
+### Note
+
+This parser prints the output in Markdown format, so you can redirect the output to a file and then view it rendered.
+
 Ex: 
-`C:\> .\pe-parse-v2.exe "C:\Path\To\MyFile.dll"`
+
+`C:\> .\pe-parse-v2.exe "C:\Path\To\MyFile.dll" > output.md` 
