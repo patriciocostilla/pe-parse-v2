@@ -1,6 +1,6 @@
 # pe-parse-v2
 
-This a 32-bit Portable Executable parser project written in C
+This is a 32-bit Portable Executable parser project written in C
 
 ## How to use
 
