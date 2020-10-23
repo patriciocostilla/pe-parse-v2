@@ -11,15 +11,11 @@ int getFileSize(FILE *fp);
 char* readFullFile(FILE* fp, int size);
 IMAGE_DOS_HEADER* parseDosHeader(char* fileData);
 IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, int ntHeaderOffset);
-/*
-* We don't need this, since we have access to file and optional headers via NT-HEADERS
-IMAGE_FILE_HEADER* parseFileHeader(char* fileData, int fileHeaderOffset);
-*/
 void printFileHeader(IMAGE_FILE_HEADER fh);
 void printOptionalHeader(IMAGE_OPTIONAL_HEADER32 oh);
 void parseSectionHeaders(char* fileData, int sectionHeadersOffset, int numberOfSections);
 IMAGE_SECTION_HEADER* getSection(char* fileData, int sectionHeadersOffset, int numberOfSections, int sectionRva);
-void parseExportDirectory(char* fileData, IMAGE_SECTION_HEADER* exportSection, int exportSectionRva);
+void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportSection, int exportSectionRva);
 void parseImportDirectory(char* fileData, IMAGE_SECTION_HEADER* importSection, int importSectionRva);
 
 
@@ -45,13 +41,6 @@ int main(int argc, char* argv[]) {
     // Parse NT Headers
     int ntHeaderOffset = (int)dh->e_lfanew;
     IMAGE_NT_HEADERS32  * nth = parseNtHeaders(fileData, ntHeaderOffset);
-    
-    /*
-    * We don't need this, since we have access to file and optional headers via NT-HEADERS
-    // Parse NT Headers -> File Header
-    //int fileHeaderOffset = (int)(ntHeaderOffset + sizeof(dh->e_lfanew));
-    //IMAGE_FILE_HEADER* fh = parseFileHeader(fileData, fileHeaderOffset);
-    */
 
     // Print NT Headers -> File Header
     printFileHeader(nth->FileHeader);
@@ -68,7 +57,7 @@ int main(int argc, char* argv[]) {
     int exportSectionRva = nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
     IMAGE_SECTION_HEADER* exportSection = getSection(fileData, sectionHeadersOffset, numberOfSections, exportSectionRva);
     printf("Export section at %s (%#0x)\n", exportSection->Name, exportSection->Misc.PhysicalAddress);
-    parseExportDirectory(fileData, exportSection, exportSectionRva);
+    parseExportDirectory((unsigned char*)fileData, exportSection, exportSectionRva);
 
     // Parse Import Directory
     int importSectionRva = nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
@@ -175,21 +164,6 @@ IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, int ntHeaderOffset) {
     printf("\n");
     return nth;
 }
-/*
-IMAGE_FILE_HEADER* parseFileHeader(char* fileData, int fileHeaderOffset) {
-    IMAGE_FILE_HEADER* fh = (IMAGE_FILE_HEADER*)malloc(sizeof(IMAGE_FILE_HEADER));
-    fh = (IMAGE_FILE_HEADER*)&fileData[fileHeaderOffset];
-    printf("[FILE-HEADER]\n");
-    printf("machine: %#0x\n", fh->Machine);
-    printf("number_of_sections: %#0x\n", fh->NumberOfSections);
-    printf("time_date_stamp: %#0x\n", fh->TimeDateStamp);
-    printf("pointer_to_symbol_table: %#0x\n", fh->PointerToSymbolTable);
-    printf("number_of_symbols: %#0x\n", fh->NumberOfSymbols);
-    printf("size_of_optional_header: %#0x\n", fh->SizeOfOptionalHeader);
-    printf("characteristics: %#0x\n", fh->Characteristics);
-    return fh;
-}
-*/
 
 void printFileHeader(IMAGE_FILE_HEADER fh) {
     printf("\n| FILE-HEADER | |\n");
@@ -243,11 +217,6 @@ void printOptionalHeader(IMAGE_OPTIONAL_HEADER32 oh) {
     for (int i = 0; i < IMAGE_NUMBEROF_DIRECTORY_ENTRIES; i++) {
         IMAGE_DATA_DIRECTORY idd = oh.DataDirectory[i];
         printf(" %d | %#0x | %#0x\n", i, idd.VirtualAddress, idd.Size);
-        /*
-        printf("\t[%d]\n", i);
-        printf("\t - VirtualAddress: %#0x\n", idd.VirtualAddress);
-        printf("\t - Size: %#0x\n", idd.Size);
-        */
     }
 
 }
@@ -314,8 +283,10 @@ void parseImportDirectory(char* fileData, IMAGE_SECTION_HEADER* importSection, i
     }
 }
 
-void parseExportDirectory(char* fileData, IMAGE_SECTION_HEADER* exportSection, int exportSectionRva) {
+void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportSection, int exportSectionRva) {
     int rawOffset = (int)fileData + exportSection->PointerToRawData;
+    printf("\n%p\n", exportSection->VirtualAddress);
+    printf("\n%p\n", exportSection->PointerToRawData);
     IMAGE_EXPORT_DIRECTORY* exportDirectory = (IMAGE_EXPORT_DIRECTORY*)(rawOffset + (exportSectionRva - exportSection->VirtualAddress));
     printf("\n## DLL-EXPORTS\n");
     printf("\n| DLL-EXPORTS | |\n");
@@ -331,8 +302,17 @@ void parseExportDirectory(char* fileData, IMAGE_SECTION_HEADER* exportSection, i
     printf("AddressOfFunctions | %#0x\n", exportDirectory->AddressOfFunctions);
     printf("AddressOfNames | %#0x\n", exportDirectory->AddressOfNames);
     printf("AddressOfNameOrdinals | %#0x\n", exportDirectory->AddressOfNameOrdinals);
-
+    /*
     int firstOffset = (int)fileData + exportDirectory->AddressOfFunctions;
-    printf("\n%#0x\n", (unsigned long) fileData[exportDirectory->AddressOfFunctions]);
+    void* a = (void*)(firstOffset - exportSection->VirtualAddress + exportSection->PointerToRawData);
+    */
+    INT64 a = ((INT64)exportDirectory->AddressOfFunctions - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    // int a = firstOffset - exportSection->VirtualAddress + exportSection->PointerToRawData;
+    printf("\na is: %p\n", a);
+    printf("\na is: %p\n", *(int*)(fileData + a));
+    printf("\na is: %p\n", *(int*)&fileData[a]);
+    // printf("\n%p\n", (unsigned long*) fileData[a]);
+    getchar();
 
 }
+
