@@ -302,16 +302,23 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
     printf("AddressOfFunctions | %#0x\n", exportDirectory->AddressOfFunctions);
     printf("AddressOfNames | %#0x\n", exportDirectory->AddressOfNames);
     printf("AddressOfNameOrdinals | %#0x\n", exportDirectory->AddressOfNameOrdinals);
-    /*
-    int firstOffset = (int)fileData + exportDirectory->AddressOfFunctions;
-    void* a = (void*)(firstOffset - exportSection->VirtualAddress + exportSection->PointerToRawData);
-    */
-    INT64 a = ((INT64)exportDirectory->AddressOfFunctions - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
-    // int a = firstOffset - exportSection->VirtualAddress + exportSection->PointerToRawData;
-    printf("\na is: %p\n", a);
-    printf("\na is: %p\n", *(int*)(fileData + a));
-    printf("\na is: %p\n", *(int*)&fileData[a]);
-    // printf("\n%p\n", (unsigned long*) fileData[a]);
+    
+    printf("\n### Exported functions\n");
+
+    INT64 firstFunctionAddress = ((INT64)exportDirectory->AddressOfFunctions - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    INT64 firstFunctionOrdinal = ((INT64)exportDirectory->AddressOfNameOrdinals - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    INT64 firstFunctionName = ((INT64)exportDirectory->AddressOfNames - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    
+    INT64 nextFunctionAddress = firstFunctionAddress;
+    INT64 nextFunctionOrdinal = firstFunctionOrdinal;
+    for (int i = 0; i < exportDirectory->NumberOfFunctions; i++) {
+        //printf("\na is: %p\n", *(int*)(fileData + firstFunctionAddress));
+        printf("\nFunction ordinal at %p -> %p\n", (int) nextFunctionOrdinal, *(WORD*)&fileData[nextFunctionOrdinal]);
+        printf("\nFunction %d at %p -> %p\n",i, (int) nextFunctionAddress, *(int*)&fileData[nextFunctionAddress]);
+        
+        nextFunctionOrdinal = nextFunctionOrdinal + sizeof(WORD);
+        nextFunctionAddress = nextFunctionAddress + sizeof(DWORD);
+    }
     getchar();
 
 }
