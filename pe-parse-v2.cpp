@@ -307,18 +307,19 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
 
     INT64 firstFunctionAddress = ((INT64)exportDirectory->AddressOfFunctions - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
     INT64 firstFunctionOrdinal = ((INT64)exportDirectory->AddressOfNameOrdinals - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
-    INT64 firstFunctionNameAddress = ((INT64)exportDirectory->AddressOfNames - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    INT64 firstFunctionNameRvaAddress = ((INT64)exportDirectory->AddressOfNames - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
     
     INT64 nextFunctionAddress = firstFunctionAddress;
     INT64 nextFunctionOrdinal = firstFunctionOrdinal;
-    INT64 nextFunctionNameAddress = firstFunctionNameAddress;
-    int functionNameAddress = *(int*)&fileData[nextFunctionNameAddress];
-    INT64 nameOffset = (INT64)exportSection->VirtualAddress - (INT64)exportSection->PointerToRawData;
-    INT64 functionName = (INT64)functionNameAddress - nameOffset;
-    printf("\nnameOffset: %p\n", nameOffset);
-    printf("\nexportSection->VirtualAddress: %p\n", exportSection->VirtualAddress);
-    printf("\nexportSection->PointerToRawData: %p\n", exportSection->PointerToRawData);
-    printf("\n# First function Name %x (%x) (%x) %s\n", (int)functionNameAddress, (int)nextFunctionNameAddress, (int)functionName, (char*)((int)fileData + (int)functionName));
+    INT64 nextFunctionNameRvaAddress = firstFunctionNameRvaAddress;
+    int nextFunctionNameRva = *(int*)&fileData[nextFunctionNameRvaAddress];
+    INT64 nextFunctionNameOffset = (INT64)exportSection->VirtualAddress - (INT64)exportSection->PointerToRawData;
+    INT64 nextFunctionNameAddress = (INT64)nextFunctionNameRva - nextFunctionNameOffset;
+    //printf("\nnameOffset: %p\n", functionNameOffset);
+    //printf("\nexportSection->VirtualAddress: %p\n", exportSection->VirtualAddress);
+    //printf("\nexportSection->PointerToRawData: %p\n", exportSection->PointerToRawData);
+    printf("\n First function name address %x (%x)\n", (int)fileData[nextFunctionNameRva], (int)nextFunctionNameRva);
+    printf("\n# First function Name %s (%x)\n", (char*)((int)fileData + (int)nextFunctionNameAddress), (int)nextFunctionNameAddress);
     printf("\n| Ord | Address | Name |\n");
     printf("| -- | --: | -- |\n");
     for (int i = 0; i < exportDirectory->NumberOfFunctions; i++) {
@@ -327,10 +328,14 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
         //printf("\nFunction %d at %p -> %p\n",i, (int) nextFunctionAddress, *(int*)&fileData[nextFunctionAddress]);
         WORD functionOrdinal = *(WORD*)&fileData[nextFunctionOrdinal];
         int functionAddress = *(int*)&fileData[nextFunctionAddress];
-        printf("%d (%x) | %x (%x) | \n", functionOrdinal, (int)nextFunctionOrdinal, functionAddress, (int)nextFunctionAddress);
+        printf("%d (%x) | %x (%x) | %s (%x)\n", functionOrdinal, (int)nextFunctionOrdinal, functionAddress, (int)nextFunctionAddress, (char*)((int)fileData + (int)nextFunctionNameAddress), (int)nextFunctionNameAddress);
         
         nextFunctionOrdinal = nextFunctionOrdinal + sizeof(WORD);
         nextFunctionAddress = nextFunctionAddress + sizeof(DWORD);
+        nextFunctionNameRvaAddress = nextFunctionNameRvaAddress + sizeof(DWORD);
+        nextFunctionNameRva = *(int*)&fileData[nextFunctionNameRvaAddress];
+        nextFunctionNameOffset = (INT64)exportSection->VirtualAddress - (INT64)exportSection->PointerToRawData;
+        nextFunctionNameAddress = (INT64)nextFunctionNameRva - nextFunctionNameOffset;
     }
     getchar();
 
