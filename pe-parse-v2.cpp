@@ -287,7 +287,7 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
     int rawOffset = (int)fileData + exportSection->PointerToRawData;
     printf("\n%p\n", exportSection->VirtualAddress);
     printf("\n%p\n", exportSection->PointerToRawData);
-    IMAGE_EXPORT_DIRECTORY* exportDirectory = (IMAGE_EXPORT_DIRECTORY*)(rawOffset + (exportSectionRva - exportSection->VirtualAddress));
+    IMAGE_EXPORT_DIRECTORY* exportDirectory = (IMAGE_EXPORT_DIRECTORY*)(rawOffset + (exportSectionRva - exportSection->VirtualAddress)); // Desplazamiento dentro del section header
     printf("\n## DLL-EXPORTS\n");
     printf("\n| DLL-EXPORTS | |\n");
     printf("| -- | --: |\n");
@@ -307,14 +307,27 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
 
     INT64 firstFunctionAddress = ((INT64)exportDirectory->AddressOfFunctions - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
     INT64 firstFunctionOrdinal = ((INT64)exportDirectory->AddressOfNameOrdinals - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
-    INT64 firstFunctionName = ((INT64)exportDirectory->AddressOfNames - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    INT64 firstFunctionNameAddress = ((INT64)exportDirectory->AddressOfNames - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
     
     INT64 nextFunctionAddress = firstFunctionAddress;
     INT64 nextFunctionOrdinal = firstFunctionOrdinal;
+    INT64 nextFunctionNameAddress = firstFunctionNameAddress;
+    int functionNameAddress = *(int*)&fileData[nextFunctionNameAddress];
+    INT64 nameOffset = (INT64)exportSection->VirtualAddress - (INT64)exportSection->PointerToRawData;
+    INT64 functionName = (INT64)functionNameAddress - nameOffset;
+    printf("\nnameOffset: %p\n", nameOffset);
+    printf("\nexportSection->VirtualAddress: %p\n", exportSection->VirtualAddress);
+    printf("\nexportSection->PointerToRawData: %p\n", exportSection->PointerToRawData);
+    printf("\n# First function Name %x (%x) (%x) %s\n", (int)functionNameAddress, (int)nextFunctionNameAddress, (int)functionName, (char*)((int)fileData + (int)functionName));
+    printf("\n| Ord | Address | Name |\n");
+    printf("| -- | --: | -- |\n");
     for (int i = 0; i < exportDirectory->NumberOfFunctions; i++) {
         //printf("\na is: %p\n", *(int*)(fileData + firstFunctionAddress));
-        printf("\nFunction ordinal at %p -> %p\n", (int) nextFunctionOrdinal, *(WORD*)&fileData[nextFunctionOrdinal]);
-        printf("\nFunction %d at %p -> %p\n",i, (int) nextFunctionAddress, *(int*)&fileData[nextFunctionAddress]);
+        //printf("\nFunction ordinal at %p -> %p\n", (int) nextFunctionOrdinal, *(WORD*)&fileData[nextFunctionOrdinal]);
+        //printf("\nFunction %d at %p -> %p\n",i, (int) nextFunctionAddress, *(int*)&fileData[nextFunctionAddress]);
+        WORD functionOrdinal = *(WORD*)&fileData[nextFunctionOrdinal];
+        int functionAddress = *(int*)&fileData[nextFunctionAddress];
+        printf("%d (%x) | %x (%x) | \n", functionOrdinal, (int)nextFunctionOrdinal, functionAddress, (int)nextFunctionAddress);
         
         nextFunctionOrdinal = nextFunctionOrdinal + sizeof(WORD);
         nextFunctionAddress = nextFunctionAddress + sizeof(DWORD);
