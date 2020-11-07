@@ -305,13 +305,10 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
     
     printf("\n### Exported functions\n");
 
-    INT64 firstFunctionAddress = ((INT64)exportDirectory->AddressOfFunctions - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
-    INT64 firstFunctionOrdinal = ((INT64)exportDirectory->AddressOfNameOrdinals - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
-    INT64 firstFunctionNameRvaAddress = ((INT64)exportDirectory->AddressOfNames - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    INT64 nextFunctionAddress = ((INT64)exportDirectory->AddressOfFunctions - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    INT64 nextFunctionOrdinal = ((INT64)exportDirectory->AddressOfNameOrdinals - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
+    INT64 nextFunctionNameRvaAddress = ((INT64)exportDirectory->AddressOfNames - (INT64)exportSection->VirtualAddress) + (INT64)exportSection->PointerToRawData;
     
-    INT64 nextFunctionAddress = firstFunctionAddress;
-    INT64 nextFunctionOrdinal = firstFunctionOrdinal;
-    INT64 nextFunctionNameRvaAddress = firstFunctionNameRvaAddress;
     int nextFunctionNameRva = *(int*)&fileData[nextFunctionNameRvaAddress];
     INT64 nextFunctionNameOffset = (INT64)exportSection->VirtualAddress - (INT64)exportSection->PointerToRawData;
     INT64 nextFunctionNameAddress = (INT64)nextFunctionNameRva - nextFunctionNameOffset;
