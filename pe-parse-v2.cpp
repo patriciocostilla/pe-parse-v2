@@ -315,8 +315,8 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
     //printf("\nnameOffset: %p\n", functionNameOffset);
     //printf("\nexportSection->VirtualAddress: %p\n", exportSection->VirtualAddress);
     //printf("\nexportSection->PointerToRawData: %p\n", exportSection->PointerToRawData);
-    printf("\n First function name address %x (%x)\n", (int)fileData[nextFunctionNameRva], (int)nextFunctionNameRva);
-    printf("\n# First function Name %s (%x)\n", (char*)((int)fileData + (int)nextFunctionNameAddress), (int)nextFunctionNameAddress);
+    //printf("\n First function name address %x (%x)\n", (int)fileData[nextFunctionNameRva], (int)nextFunctionNameRva);
+    //printf("\n# First function Name %s (%x)\n", (char*)((int)fileData + (int)nextFunctionNameAddress), (int)nextFunctionNameAddress);
     printf("\n| Ord | Address | Name |\n");
     printf("| -- | --: | -- |\n");
     for (int i = 0; i < exportDirectory->NumberOfFunctions; i++) {
