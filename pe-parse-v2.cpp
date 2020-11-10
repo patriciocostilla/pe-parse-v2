@@ -10,7 +10,7 @@ void mapFileToMemory();
 int getFileSize(FILE *fp);
 char* readFullFile(FILE* fp, int size);
 IMAGE_DOS_HEADER* parseDosHeader(char* fileData);
-IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, int ntHeaderOffset);
+IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, DWORD ntHeaderOffset);
 void printFileHeader(IMAGE_FILE_HEADER fh);
 void printOptionalHeader(IMAGE_OPTIONAL_HEADER32 oh);
 void parseSectionHeaders(char* fileData, int sectionHeadersOffset, int numberOfSections);
@@ -39,7 +39,8 @@ int main(int argc, char* argv[]) {
     IMAGE_DOS_HEADER* dh = parseDosHeader(fileData);
 
     // Parse NT Headers
-    int ntHeaderOffset = (int)dh->e_lfanew;
+    DWORD ntHeaderOffset = (DWORD)dh->e_lfanew;
+    printf("\NT Headers at: %x", ntHeaderOffset);
     IMAGE_NT_HEADERS32  * nth = parseNtHeaders(fileData, ntHeaderOffset);
 
     // Print NT Headers -> File Header
@@ -55,16 +56,24 @@ int main(int argc, char* argv[]) {
 
     // Get Export Section
     int exportSectionRva = nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
-    IMAGE_SECTION_HEADER* exportSection = getSection(fileData, sectionHeadersOffset, numberOfSections, exportSectionRva);
-    printf("Export section at %s (%#0x)\n", exportSection->Name, exportSection->Misc.PhysicalAddress);
-    parseExportDirectory((unsigned char*)fileData, exportSection, exportSectionRva);
-
+    if (exportSectionRva != 0) {
+        IMAGE_SECTION_HEADER* exportSection = getSection(fileData, sectionHeadersOffset, numberOfSections, exportSectionRva);
+        //printf("Export section at %s (%#0x)\n", exportSection->Name, exportSection->Misc.PhysicalAddress);
+        parseExportDirectory((unsigned char*)fileData, exportSection, exportSectionRva);
+    }
+    else {
+        printf("\n# There is no export directory\n");
+    }
     // Parse Import Directory
     int importSectionRva = nth->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
-    IMAGE_SECTION_HEADER* importSection = getSection(fileData, sectionHeadersOffset, numberOfSections, importSectionRva);
-    printf("Import section at %s (%#0x)\n", importSection->Name, importSection->Misc.PhysicalAddress);
-    parseImportDirectory(fileData, importSection, importSectionRva);
-
+    if (importSectionRva != 0) {
+        IMAGE_SECTION_HEADER* importSection = getSection(fileData, sectionHeadersOffset, numberOfSections, importSectionRva);
+        //printf("Import section at %s (%#0x)\n", importSection->Name, importSection->Misc.PhysicalAddress);
+        parseImportDirectory(fileData, importSection, importSectionRva);
+    }
+    else {
+        printf("\n# There is no import section\n");
+    }
     return 0;
 }
 
@@ -154,7 +163,7 @@ IMAGE_DOS_HEADER* parseDosHeader(char* fileData) {
     return dh;
 }
 
-IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, int ntHeaderOffset) {
+IMAGE_NT_HEADERS32  * parseNtHeaders(char* fileData, DWORD ntHeaderOffset) {
     IMAGE_NT_HEADERS32  * nth = (IMAGE_NT_HEADERS32  *)malloc(sizeof(IMAGE_NT_HEADERS32));
     nth = (IMAGE_NT_HEADERS32  *) &fileData[ntHeaderOffset];
     printf("\n## NT-HEADERS\n");
@@ -258,7 +267,7 @@ IMAGE_SECTION_HEADER* getSection(char* fileData, int sectionHeadersOffset, int n
 void parseImportDirectory(char* fileData, IMAGE_SECTION_HEADER* importSection, int importSectionRva) {
     int rawOffset = (int)fileData + importSection->PointerToRawData;
     IMAGE_IMPORT_DESCRIPTOR* importDescriptor = (IMAGE_IMPORT_DESCRIPTOR*)(rawOffset + (importSectionRva - importSection->VirtualAddress));
-    printf("## DLL-IMPORTS\n");
+    printf("\n## DLL-IMPORTS\n");
     for (; importDescriptor->Name != 0; importDescriptor++) {
         printf("\n| %s | |\n", rawOffset + (importDescriptor->Name - importSection->VirtualAddress)); // DLL Name
         printf("| -- | --: |\n");
