@@ -111,7 +111,7 @@ FILE* openFile(char fileName[]) {
         exit(0);
     }
     printf("File mapped: %s\t%d\n", fileName, (int)fh);
-}*/
+}*/ 
 
 int getFileSize(FILE *fp) {
     // Seek end of file
@@ -334,7 +334,13 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
         //printf("\nFunction %d at %p -> %p\n",i, (int) nextFunctionAddress, *(int*)&fileData[nextFunctionAddress]);
         WORD functionOrdinal = *(WORD*)&fileData[nextFunctionOrdinal];
         int functionAddress = *(int*)&fileData[nextFunctionAddress];
-        printf("%d (%x) | %x (%x) | %s (%x)\n", functionOrdinal, (int)nextFunctionOrdinal, functionAddress, (int)nextFunctionAddress, (char*)((int)fileData + (int)nextFunctionNameAddress), (int)nextFunctionNameAddress);
+        if (nextFunctionNameRva > 0) {
+            printf("%d (%x) | %x (%x) | %s (%x)\n", functionOrdinal, (int)nextFunctionOrdinal, functionAddress, (int)nextFunctionAddress, (char*)((int)fileData + (int)nextFunctionNameAddress), (int)nextFunctionNameAddress);
+        }
+        else {
+            printf("%d (%x) | %x (%x) | NULL\n", functionOrdinal, (int)nextFunctionOrdinal, functionAddress, (int)nextFunctionAddress);
+        }
+        
         
         nextFunctionOrdinal = nextFunctionOrdinal + sizeof(WORD);
         nextFunctionAddress = nextFunctionAddress + sizeof(DWORD);
@@ -343,7 +349,6 @@ void parseExportDirectory(unsigned char* fileData, IMAGE_SECTION_HEADER* exportS
         nextFunctionNameOffset = (INT64)exportSection->VirtualAddress - (INT64)exportSection->PointerToRawData;
         nextFunctionNameAddress = (INT64)nextFunctionNameRva - nextFunctionNameOffset;
     }
-    getchar();
 
 }
 
